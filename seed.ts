@@ -4,7 +4,7 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
-// Reprodutseeritav tulemus
+// Reproducible result
 faker.seed(123);
 
 const client = new Client({
@@ -16,109 +16,146 @@ const client = new Client({
 });
 
 const BATCH_SIZE = 5000;
-const LOANS_TARGET = 2_000_000;
+const BOOK_COPIES_TARGET = 2_000_000;
 
 async function batchInsert(query: string, values: any[][]) {
+  // Simple batch insert using string, values escaped
   const text = `${query} VALUES ${values
     .map(
-      (_, i) =>
-        `(${values[i].map((_, j) => `$${i * values[i].length + j + 1}`).join(",")})`
+      row =>
+        `(${row
+          .map(val =>
+            val === null
+              ? "NULL"
+              : typeof val === "string"
+              ? `'${val.replace(/'/g, "''")}'`
+              : val
+          )
+          .join(",")})`
     )
     .join(",")}`;
-  const flatValues = values.flat();
-  await client.query(text, flatValues);
+  await client.query(text);
+}
+
+function formatDate(date: Date) {
+  return date.toISOString().split("T")[0];
 }
 
 async function main() {
   await client.connect();
 
-  console.log(">>> Eemaldame sekundaarsed indeksid ajutiselt...");
+  console.log(">>> Temporarily dropping secondary indexes...");
   await client.query(`DROP INDEX IF EXISTS idx_books_author;`);
-  await client.query(`DROP INDEX IF EXISTS idx_loans_member;`);
-  await client.query(`DROP INDEX IF EXISTS idx_loans_book;`);
+  await client.query(`DROP INDEX IF EXISTS idx_book_copies_book;`);
+  await client.query(`DROP INDEX IF EXISTS idx_transactions_user;`);
+  await client.query(`DROP INDEX IF EXISTS idx_transactions_copy;`);
 
-  // Autorid
-  console.log("Lisame autoreid batchidena...");
+  // 1. Authors
+  console.log("Inserting authors...");
   for (let i = 0; i < 5000; i += BATCH_SIZE) {
-    const values: any[][] = [];
+    const batch: any[][] = [];
     for (let j = 0; j < BATCH_SIZE && i + j < 5000; j++) {
-      values.push([faker.person.fullName()]);
+      batch.push([faker.person.fullName(), faker.date.birthdate({ min: 1900, max: 2000, mode: "year" }).getFullYear()]);
     }
-    await batchInsert("INSERT INTO authors (name)", values);
+    await batchInsert("INSERT INTO authors (name, birth_year)", batch);
   }
 
-  // Raamatud
-  console.log("Lisame raamatuid batchidena...");
-  for (let i = 0; i < 100000; i += BATCH_SIZE) {
-    const values: any[][] = [];
-    for (let j = 0; j < BATCH_SIZE && i + j < 100000; j++) {
-      values.push([
-        faker.lorem.words({ min: 2, max: 5 }),
-        faker.music.genre(),
-        faker.number.int({ min: 1, max: 5000 }),
+  // 2. Genres
+  console.log("Inserting genres...");
+  const genres = ["Fiction","Non-Fiction","Fantasy","Science Fiction","Mystery","Thriller","Romance","Biography","History","Children"];
+  const genreValues = genres.map(g => [g]);
+  await batchInsert("INSERT INTO genres (name)", genreValues);
+
+  // 3. Books
+  console.log("Inserting books...");
+  const TOTAL_BOOKS = 50000;
+  for (let i = 0; i < TOTAL_BOOKS; i += BATCH_SIZE) {
+    const batch: any[][] = [];
+    for (let j = 0; j < BATCH_SIZE && i + j < TOTAL_BOOKS; j++) {
+      batch.push([
+        faker.string.numeric(13), // ISBN
+        faker.lorem.sentence(3).replace(/'/g, "''"), // title
+        Math.floor(Math.random() * 5000) + 1, // author_id
+        Math.floor(Math.random() * genres.length) + 1, // genre_id
+        `${faker.number.int({ min: 1, max: 5 })}.${faker.number.int({ min: 0, max: 9 })}` // edition
       ]);
     }
-    await batchInsert("INSERT INTO books (title, genre, author_id)", values);
+    await batchInsert("INSERT INTO books (isbn, title, author_id, genre_id, edition)", batch);
   }
 
-  // Liikmed
-  console.log("Lisame liikmeid batchidena...");
-  for (let i = 0; i < 50000; i += BATCH_SIZE) {
-    const values: any[][] = [];
-    for (let j = 0; j < BATCH_SIZE && i + j < 50000; j++) {
-      values.push([
+  // 4. Users
+  console.log("Inserting users...");
+  const TOTAL_USERS = 20000;
+  for (let i = 0; i < TOTAL_USERS; i += BATCH_SIZE) {
+    const batch: any[][] = [];
+    for (let j = 0; j < BATCH_SIZE && i + j < TOTAL_USERS; j++) {
+      batch.push([
         faker.person.fullName(),
         faker.internet.email(),
-        faker.location.streetAddress(),
-        faker.date.past(),
+        faker.internet.password(),
+        Math.random() < 0.05 ? "admin" : "user"
       ]);
     }
-    await batchInsert(
-      "INSERT INTO members (name, email, address, joined_at)",
-      values
-    );
+    await batchInsert("INSERT INTO users (name, email, password, role)", batch);
   }
 
-  // Laenud
-  console.log("Lisame laenutusi batchidena...");
+  // 5. Book copies (≥2M)
+  console.log("Inserting book copies...");
+  for (let i = 0; i < BOOK_COPIES_TARGET; i += BATCH_SIZE) {
+    const batch: any[][] = [];
+    for (let j = 0; j < BATCH_SIZE && i + j < BOOK_COPIES_TARGET; j++) {
+      batch.push([
+        Math.floor(Math.random() * TOTAL_BOOKS) + 1, // book_id
+        `BC${(i + j + 1).toString().padStart(7, "0")}`,
+        "available"
+      ]);
+    }
+    await batchInsert("INSERT INTO book_copies (book_id, barcode, status)", batch);
+    if ((i / BATCH_SIZE) % 20 === 0) console.log(`   → ${i + BATCH_SIZE} / ${BOOK_COPIES_TARGET} book copies inserted`);
+  }
+
+  // 6. Transactions
+  console.log("Inserting transactions...");
+  const TOTAL_TRANSACTIONS = 5000000;
   let inserted = 0;
-  while (inserted < LOANS_TARGET) {
-    const values: any[][] = [];
-    for (let j = 0; j < BATCH_SIZE; j++) {
-      const memberId = faker.number.int({ min: 1, max: 50000 });
-      const bookId = faker.number.int({ min: 1, max: 100000 });
-      const loanDate = faker.date.past();
-      const returnDate =
-        Math.random() > 0.5 ? faker.date.soon({ days: 30, refDate: loanDate }) : null;
-      values.push([memberId, bookId, loanDate, returnDate]);
+  while (inserted < TOTAL_TRANSACTIONS) {
+    const batch: any[][] = [];
+    for (let j = 0; j < BATCH_SIZE && inserted + j < TOTAL_TRANSACTIONS; j++) {
+      const issueDate = faker.date.between({ from: "2018-01-01", to: "2025-09-30" });
+      const returnDate = Math.random() < 0.7
+        ? faker.date.between({ from: issueDate, to: "2025-09-30" })
+        : null;
+      batch.push([
+        Math.floor(Math.random() * TOTAL_USERS) + 1, // user_id
+        Math.floor(Math.random() * BOOK_COPIES_TARGET) + 1, // copy_id
+        formatDate(issueDate),
+        returnDate ? formatDate(returnDate) : null,
+        returnDate ? "returned" : "borrowed"
+      ]);
     }
-    await batchInsert(
-      "INSERT INTO loans (member_id, book_id, loan_date, return_date)",
-      values
-    );
-    inserted += BATCH_SIZE;
-    if (inserted % 100000 === 0) {
-      console.log(`   → ${inserted} laenutust lisatud...`);
-    }
+    await batchInsert("INSERT INTO transactions (user_id, copy_id, issue_date, return_date, status)", batch);
+    inserted += batch.length;
+    if (inserted % 100000 === 0) console.log(`   → ${inserted} / ${TOTAL_TRANSACTIONS} transactions inserted`);
   }
 
-  console.log(">>> Taastame sekundaarsed indeksid...");
+  console.log(">>> Restoring secondary indexes...");
   await client.query(`CREATE INDEX idx_books_author ON books(author_id);`);
-  await client.query(`CREATE INDEX idx_loans_member ON loans(member_id);`);
-  await client.query(`CREATE INDEX idx_loans_book ON loans(book_id);`);
+  await client.query(`CREATE INDEX idx_book_copies_book ON book_copies(book_id);`);
+  await client.query(`CREATE INDEX idx_transactions_user ON transactions(user_id);`);
+  await client.query(`CREATE INDEX idx_transactions_copy ON transactions(copy_id);`);
 
-  console.log(">>> Valmis!");
+  console.log(">>> Seeding completed!");
 
-  // Kontroll
-  for (const table of ["authors", "books", "members", "loans"]) {
+  // Verify counts
+  for (const table of ["authors","genres","books","users","book_copies","transactions"]) {
     const res = await client.query(`SELECT COUNT(*) FROM ${table}`);
-    console.log(`${table}: ${res.rows[0].count} rida`);
+    console.log(`${table}: ${res.rows[0].count} rows`);
   }
 
   await client.end();
 }
 
-main().catch((err) => {
-  console.error("Viga:", err);
+main().catch(err => {
+  console.error("Error:", err);
   client.end();
 });
