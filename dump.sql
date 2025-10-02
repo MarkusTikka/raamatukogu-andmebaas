@@ -1,34 +1,80 @@
--- Raamatukogu andmebaasi skeem
+-- ============================================
+-- Library Database Schema
+-- ============================================
 
-DROP TABLE IF EXISTS loans;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS book_copies;
 DROP TABLE IF EXISTS books;
+DROP TABLE IF EXISTS genres;
+DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS authors;
-DROP TABLE IF EXISTS members;
 
+-- ============================================
+-- Authors
+-- ============================================
 CREATE TABLE authors (
     id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL
+    name VARCHAR(255) NOT NULL,
+    birth_year INT
 );
 
+-- ============================================
+-- Genres
+-- ============================================
+CREATE TABLE genres (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- ============================================
+-- Books
+-- ============================================
 CREATE TABLE books (
     id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    genre TEXT NOT NULL,
-    author_id INT NOT NULL REFERENCES authors(id)
+    isbn VARCHAR(20) NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    author_id INT NOT NULL REFERENCES authors(id),
+    genre_id INT NOT NULL REFERENCES genres(id),
+    edition VARCHAR(50)
 );
 
-CREATE TABLE members (
+-- ============================================
+-- Users
+-- ============================================
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    address TEXT NOT NULL,
-    joined_at DATE NOT NULL
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(10) NOT NULL
 );
 
-CREATE TABLE loans (
-    id BIGSERIAL PRIMARY KEY,
-    member_id INT NOT NULL REFERENCES members(id),
+-- ============================================
+-- Book copies
+-- ============================================
+CREATE TABLE book_copies (
+    id SERIAL PRIMARY KEY,
     book_id INT NOT NULL REFERENCES books(id),
-    loan_date DATE NOT NULL,
-    return_date DATE
+    barcode VARCHAR(50) NOT NULL UNIQUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'available'
 );
+
+-- ============================================
+-- Transactions
+-- ============================================
+CREATE TABLE transactions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id),
+    copy_id INT NOT NULL REFERENCES book_copies(id),
+    issue_date DATE NOT NULL,
+    return_date DATE,
+    status VARCHAR(20) NOT NULL DEFAULT 'borrowed'
+);
+
+-- ============================================
+-- Indexes
+-- ============================================
+CREATE INDEX idx_books_author ON books(author_id);
+CREATE INDEX idx_book_copies_book ON book_copies(book_id);
+CREATE INDEX idx_transactions_user ON transactions(user_id);
+CREATE INDEX idx_transactions_copy ON transactions(copy_id);
