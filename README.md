@@ -1,46 +1,47 @@
-# Library Database Seed Generator
+Library Database Seed Generator
 
-This repository contains the schema dump and a reproducible seed script for generating realistic library data, including over 2,000,000 book copies.
+See repo sisaldab andmebaasi skeemi (dump.sql) ja skripti, mis täidab skeemi realistlike andmetega, sealhulgas üle 2 000 000 raamatu eksemplari. Järgnevalt on samm-sammuline juhend, kuidas alustada nullist.
 
-## Prerequisites
+Eeldused
 
-- PostgreSQL ≥ 12
-- Node.js ≥ 20 (or Bun)
-- npm or Bun for package management
-- `.env` file in the root folder with database credentials:
+Enne alustamist peab olema:
 
+PostgreSQL ≥ 12
+
+Node.js ≥ 20 (või Bun
+)
+
+npm või Bun paketihaldur
+
+.env fail juurkataloogis, kus on andmebaasi andmed:
 
 DB_HOST=localhost
 DB_PORT=5432
-DB_USER=your_username
-DB_PASS=your_password
+DB_USER=kasutajanimi
+DB_PASS=parool
 DB_NAME=library
 
-## Database Setup
+1. Loo andmebaas
 
-1. Create the database:
+Terminalis:
 
-```bash
-psql -U your_username -c "CREATE DATABASE library;"
-2. Import the schema:
+psql -U kasutajanimi -c "CREATE DATABASE library;"
 
-psql -U your_username -d library -f dump.sql
-This creates all tables, foreign keys, and triggers.
+
+See loob uue PostgreSQL andmebaasi nimega library.
+
+2. Lae skeem
+psql -U kasutajanimi -d library -f dump.sql
+
+
+See loob kõik tabelid, välisvõtmed ja triggerid.
+
+3. Installi vajalikud paketid
 npm install
-# or with Bun
+# või Bun kasutades
 bun install
-Run Seed Script
+
+4. Käivita seed skript
 node seed.js
-# or with Bun
+# või Bun kasutades
 bun run seed.js
-Notes
-
-The seed is reproducible using faker.seed(123).
-
-The script uses batch inserts (BATCH_SIZE = 5000) for performance.
-
-Ensure your PostgreSQL server has sufficient memory and max_allowed_packet configured if using large batches.
-
-Foreign key integrity is guaranteed; there are no orphan records.
-
-All dates are realistic (issue_date, return_date) and formatted correctly for PostgreSQL.
