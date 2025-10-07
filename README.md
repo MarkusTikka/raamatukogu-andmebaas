@@ -82,9 +82,10 @@ See loob kõik tabelid, välisvõtmed ja triggerid.
 # või Bun kasutades
 bun install
 5. Käivita seed skript
-node seed.js
-# või Bun kasutades
-bun run seed.js
+npx ts-node seed.ts
+# või Bun:
+bun run seed.ts
+
 6. Kontrolli tulemust
 
 books tabel: ≥ 2 000 000 rida
