@@ -71,7 +71,8 @@ docker cp dump.sql library-db:/dump.sql
 Täida skeem:
 
 ```bash
-docker exec -it library-db psql -U $DB_USER -d $DB_NAME -f /dump.sql
+docker exec -i library-db psql -U kasutajanimi -d library -f /dump.sql
+
 ```
 
 > See loob kõik tabelid, välisvõtmed ja triggerid.
