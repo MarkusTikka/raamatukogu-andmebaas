@@ -47,20 +47,34 @@ Loo fail docker-compose.yml juurkausta:
 version: '3.9'
 
 services:
+  
   library-db:
+    
     image: postgres:15
+    
     container_name: library-db
+    
     restart: always
+    
     environment:
+      
       POSTGRES_USER: ${DB_USER}
+      
       POSTGRES_PASSWORD: ${DB_PASS}
+      
       POSTGRES_DB: ${DB_NAME}
+    
     ports:
+      
       - "5432:5432"
+    
     volumes:
+      
       - library-data:/var/lib/postgresql/data
 
+
 volumes:
+  
   library-data:
 
   2. Käivita PostgreSQL konteiner
