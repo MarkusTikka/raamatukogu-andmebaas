@@ -29,10 +29,15 @@ Paigalda Node.js
 
 .env fail juurkataloogis, näiteks:
 DB_HOST=library-db
+
 DB_PORT=5432
+
 DB_USER=kasutajanimi
+
 DB_PASS=parool
+
 DB_NAME=library
+
 DB_HOST = Docker Compose teenuse nimi (library-db).
 
 1. Loo Docker Compose fail
