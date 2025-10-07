@@ -1,55 +1,54 @@
-Library Database Seed Generator – Samm-sammult
+# Library Database Seed Generator – Samm-sammult
 
-See juhend aitab sul alustada nullist ja täita andmebaasi realistlike andmetega, sealhulgas üle 2 000 000 raamatu eksemplari, kasutades Dockerit. Kõik vajalikud tööriistad ja eeldused on kirjas.
+See juhend aitab sul alustada nullist ja täita andmebaasi realistlike andmetega, sealhulgas **üle 2 000 000 raamatu eksemplari**, kasutades **Dockerit**. Kõik vajalikud tööriistad ja eeldused on kirjas allpool.
 
-Eeldused
+---
+
+## Eeldused
 
 Enne alustamist veendu, et sul on olemas:
 
-Docker ≥ 24
+1. **Docker ≥ 24**  
+   [Paigalda Docker](https://docs.docker.com/get-docker/) vastavalt sinu operatsioonisüsteemile.
 
-Paigalda Docker
- vastavalt sinu operatsioonisüsteemile.
+2. **Docker Compose ≥ 2.17**  
+   Tavaliselt tuleb Docker Compose Dockeriga kaasa. Kontrolli versiooni:
+   ```bash
+   docker compose version
+   ```
 
-Docker Compose ≥ 2.17
+3. **Git (soovitatav, aga mitte kohustuslik)**  
+   Repo kloonimiseks:
+   ```bash
+   git clone https://github.com/MarkusTikka/raamatukogu-andmebaas.git
+   cd raamatukogu-andmebaas
+   ```
+   Kui Git puudub, laadi repo ZIP-failina ja paki lahti.
 
-Tavaliselt tuleb Docker Compose Dockeriga kaasa, kontrolli versiooni:
-docker compose version
-Git (soovitatav, aga mitte kohustuslik)
+4. **Node.js ≥ 20 või Bun** (ainult seed skripti jaoks, kui ei jooksuta konteineris)  
+   [Paigalda Node.js](https://nodejs.org/) või [Bun](https://bun.sh/)
 
-Kui Git on olemas, saab repo kloonida:
-git clone
-https://github.com/MarkusTikka/raamatukogu-andmebaas/blob/main/seed.ts
-Kui Git puudub, laadi repo ZIP-failina ja paki lahti.
+5. **.env fail** juurkataloogis:  
+   ```dotenv
+   DB_HOST=library-db
+   DB_PORT=5432
+   DB_USER=kasutajanimi
+   DB_PASS=parool
+   DB_NAME=library
+   ```
+   > DB_HOST = Docker Compose teenuse nimi (`library-db`)
 
-Node.js ≥ 20 või Bun (ainult seed skripti jaoks, kui ei jooksuta konteineris)
+---
 
-Paigalda Node.js
- või Bun
+## 1. Loo Docker Compose fail
 
-.env fail juurkataloogis, näiteks:
-DB_HOST=library-db
+`docker-compose.yml` juurkausta:
 
-DB_PORT=5432
-
-DB_USER=kasutajanimi
-
-DB_PASS=parool
-
-DB_NAME=library
-
-DB_HOST = Docker Compose teenuse nimi (library-db).
-
-1. Loo Docker Compose fail
-
-Loo fail docker-compose.yml juurkausta:
-
+```yaml
 version: '3.9'
 
 services:
-  
   library-db:
-    
     image: postgres:15
     container_name: library-db
     restart: always
@@ -63,46 +62,112 @@ services:
       - library-data:/var/lib/postgresql/data
 
 volumes:
-  
   library-data:
+```
 
-  2. Käivita PostgreSQL konteiner
+---
 
-   docker compose up -d
-   See loob ja käivitab PostgreSQL andmebaasi konteineris.
+## 2. Käivita PostgreSQL konteiner
+
+```bash
+docker compose up -d
+```
 
 Kontrolli, kas konteiner töötab:
+
+```bash
 docker ps
+```
 
-3. Lae skeem andmebaasi
+> See loob ja käivitab PostgreSQL andmebaasi konteineris.
 
-Kopeeri dump.sql konteinerisse:
+---
+
+## 3. Lae skeem andmebaasi
+
+> ⚠️ **Oluline:** Fail `dump.sql` peab olema repo juurkaustas.
+
+Kopeeri `dump.sql` konteinerisse:
+
+```bash
 docker cp dump.sql library-db:/dump.sql
+```
 
-Seejärel täida skeem:
+Täida skeem:
+
+```bash
 docker exec -it library-db psql -U $DB_USER -d $DB_NAME -f /dump.sql
-See loob kõik tabelid, välisvõtmed ja triggerid.
+```
 
-4. Installi Node.js paketid
-   Kui Node.js on lokaalset masinas või kasutad Bun-i:
-   npm install
+> See loob kõik tabelid, välisvõtmed ja triggerid.
+
+---
+
+## 4. Installi Node.js paketid
+
+```bash
+npm install
 # või Bun kasutades
 bun install
-5. Käivita seed skript
+```
+
+---
+
+## 5. Käivita seed skript
+
+```bash
 npx ts-node seed.ts
 # või Bun:
 bun run seed.ts
+```
 
-6. Kontrolli tulemust
+> Skript täidab tabelid realistlike andmetega partiisissetustega (`BATCH_SIZE = 5000`).
+> Kõik välisvõtmed on õiged, orvukirjeid ei teki. Seed on reprodutseeritav (`faker.seed(123)`).
 
-books tabel: ≥ 2 000 000 rida
-Teised mitte-lookup tabelid: realistlik arv andmeid, proportsioonid põhjendatud
-Andmed näevad ehtsad välja (nimed, e-kirjad, aadressid, kuupäevad)
-Sisestus on partiides, jõudlus optimaalne
+---
 
+## 6. Kontrolli tulemust
 
+- **`books` tabel**: ≥ 2 000 000 rida
+- Teised mitte-lookup tabelid: realistlik arv andmeid
+- Andmed näevad ehtsad välja (nimed, e-kirjad, aadressid, kuupäevad)
+- Sisestus on partiides, jõudlus optimaalne
 
+---
 
+## Näidis `package.json`
 
+```json
+{
+  "name": "raamatukogu-andmebaas",
+  "version": "1.0.0",
+  "description": "Library Database Seed Generator",
+  "main": "seed.ts",
+  "scripts": {
+    "start": "ts-node seed.ts"
+  },
+  "dependencies": {
+    "pg": "^8.11.0",
+    "faker": "^7.6.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  }
+}
+```
 
+- Selle olemasolul saab seed skripti käivitada lihtsalt:
+
+```bash
+npm install
+npm run start
+# või Bun-ga
+bun install
+bun run start
+```
+
+---
+
+> Kui soovid, võid lisada ka Docker-only versiooni, kus ts-node seed skript jookseb konteineris, nii et Node.js ei pea kohalikus masinas olema.
 
