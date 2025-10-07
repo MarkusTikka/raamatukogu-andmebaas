@@ -142,19 +142,17 @@ bun run seed.ts
   "name": "raamatukogu-andmebaas",
   "version": "1.0.0",
   "description": "Library Database Seed Generator",
-  "main": "seed.ts",
+  "main": "seed.js",
   "scripts": {
-    "start": "ts-node seed.ts"
+    "start": "node seed.js"
   },
   "dependencies": {
     "pg": "^8.11.0",
-    "faker": "^7.6.0"
-  },
-  "devDependencies": {
-    "ts-node": "^10.9.1",
-    "typescript": "^5.1.6"
+    "@faker-js/faker": "^8.0.2",
+    "dotenv": "^16.3.1"
   }
 }
+
 ```
 
 - Selle olemasolul saab seed skripti käivitada lihtsalt:
