@@ -18,8 +18,7 @@ docker compose version
 Git (soovitatav, aga mitte kohustuslik)
 
 Kui Git on olemas, saab repo kloonida:
-git clone https://github.com/sinu-kasutaja/library-database-seed.git
-cd library-database-seed
+git clone
 https://github.com/MarkusTikka/raamatukogu-andmebaas/blob/main/seed.ts
 Kui Git puudub, laadi repo ZIP-failina ja paki lahti.
 
