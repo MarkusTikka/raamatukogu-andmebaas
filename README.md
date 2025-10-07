@@ -45,17 +45,14 @@ Enne alustamist veendu, et sul on olemas:
 `docker-compose.yml` juurkausta:
 
 ```yaml
-version: '3.9'
-
 services:
   library-db:
     image: postgres:15
     container_name: library-db
-    restart: always
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_DB: library
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: passw0rd
     ports:
       - "5433:5432"
     volumes:
