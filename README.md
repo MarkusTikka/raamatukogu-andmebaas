@@ -112,9 +112,8 @@ npm install
 ## 5. Käivita seed skript
 
 ```bash
-npx ts-node seed.ts
-# või Bun:
-bun run seed.ts
+node seed.js
+
 ```
 
 > Skript täidab tabelid realistlike andmetega partiisissetustega (`BATCH_SIZE = 5000`).
