@@ -71,7 +71,8 @@ docker cp dump.sql library-db:/dump.sql
 Täida skeem:
 
 ```bash
-docker exec -i library-db psql -U kasutajanimi -d library -f /dump.sql
+bash -c 'docker exec library-db psql -U $(grep DB_USER .env | cut -d "=" -f2) -d $(grep DB_NAME .env | cut -d "=" -f2) -f /dump.sql'
+
 
 ```
 
