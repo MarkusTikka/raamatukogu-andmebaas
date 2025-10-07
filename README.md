@@ -142,9 +142,14 @@ node seed.js
     "start": "node seed.js"
   },
   "dependencies": {
-    "pg": "^8.11.0",
     "@faker-js/faker": "^8.0.2",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
 
