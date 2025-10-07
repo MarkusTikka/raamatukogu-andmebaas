@@ -160,12 +160,8 @@ node seed.js
 ```bash
 npm install
 npm run start
-# või Bun-ga
-bun install
-bun run start
 ```
 
 ---
 
-> Kui soovid, võid lisada ka Docker-only versiooni, kus ts-node seed skript jookseb konteineris, nii et Node.js ei pea kohalikus masinas olema.
 
