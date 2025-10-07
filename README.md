@@ -104,8 +104,7 @@ docker exec -it library-db psql -U $DB_USER -d $DB_NAME -f /dump.sql
 
 ```bash
 npm install
-# või Bun kasutades
-bun install
+
 ```
 
 ---
