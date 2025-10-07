@@ -40,29 +40,7 @@ Enne alustamist veendu, et sul on olemas:
 
 ---
 
-## 1. Loo Docker Compose fail
 
-`docker-compose.yml` juurkausta:
-
-```yaml
-services:
-  library-db:
-    image: postgres:15
-    container_name: library-db
-    environment:
-      POSTGRES_DB: library
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: passw0rd
-    ports:
-      - "5433:5432"
-    volumes:
-      - library-data:/var/lib/postgresql/data
-
-volumes:
-  library-data:
-```
-
----
 
 ## 2. Käivita PostgreSQL konteiner
 
