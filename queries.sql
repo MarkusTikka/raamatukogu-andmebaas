@@ -1,103 +1,115 @@
-/*
-================================================================================
-File: queries.sql
-Project: Library Database SQL SELECT Queries Exercise
-Author: Markus Tikka
-Date: 2025-10-07
-Branch: main
-
-Description:
-This file contains 6 relevant SQL SELECT queries for the library database.
-Each query is documented with purpose and expected result.
-All queries are designed to provide useful information to librarians, admins,
-or library members, following the assignment requirements.
-================================================================================
+/* 
+  queries.sql - Rewritten for the actual project schema (PostgreSQL)
+  Tables:
+    - authors (assumed columns: id, first_name, last_name, etc.)
+    - genres (id, name, ...)
+    - books (id, isbn, title, authorid, genreid, edition)
+    - users (id, name, email, password, role)
+    - bookcopies (id, bookid, barcode, status)
+    - transactions (id, userid, copyid, issuedate, returndate, status)
 */
 
--- 1. Find all currently available books
--- Purpose: Allows the librarian to see which books are available for loan
--- Expected result: List of books with at least 1 copy available
+/* 1. Find all currently available books 
+   Purpose: List books that have at least one available copy.
+   Expected result: Books with available copies, grouped by title and genre.
+   Note: "Available" copies are taken as those in bookcopies with status = 'available'
+*/
 SELECT 
-    b.title AS 'Book Title',
-    b.isbn AS 'ISBN',
-    b.publication_year AS 'Publication Year',
-    b.copies_available AS 'Available Copies',
-    c.name AS 'Category'
+    b.title AS "Book Title",
+    b.isbn AS "ISBN",
+    b.edition AS "Edition",
+    COUNT(bc.id) AS "Available Copies",
+    g.name AS "Genre"
 FROM books b
-JOIN categories c ON b.category_id = c.id
-WHERE b.copies_available > 0
+JOIN genres g ON b.genreid = g.id
+JOIN bookcopies bc ON b.id = bc.bookid
+WHERE bc.status = 'available'
+GROUP BY b.id, b.title, b.isbn, b.edition, g.name
 ORDER BY b.title;
 
--- 2. Find members who currently have books on loan
--- Purpose: Shows which members have active loans
--- Expected result: List of members and their currently borrowed books
+/* 2. Find users who currently have books on loan 
+   Purpose: Show users with active loan transactions.
+   Expected result: List of users, borrowed books, loan dates, and due dates.
+   Note: We assume users table replaces members, and transactions replaces loans.
+         Books are linked via bookcopies. Due date is calculated as issuedate + 30 days.
+*/
 SELECT 
-    m.first_name AS 'First Name',
-    m.last_name AS 'Last Name',
-    b.title AS 'Book',
-    l.loan_date AS 'Loan Date',
-    l.due_date AS 'Due Date'
-FROM members m
-JOIN loans l ON m.id = l.member_id
-JOIN books b ON l.book_id = b.id
-WHERE l.status = 'active' AND l.return_date IS NULL
-ORDER BY l.due_date;
+    u.name AS "Name",
+    b.title AS "Book",
+    t.issuedate AS "Loan Date",
+    (t.issuedate + INTERVAL '30 days')::date AS "Due Date"
+FROM users u
+JOIN transactions t ON u.id = t.userid
+JOIN bookcopies bc ON t.copyid = bc.id
+JOIN books b ON bc.bookid = b.id
+WHERE t.status = 'active'
+  AND t.returndate IS NULL
+ORDER BY t.issuedate;
 
--- 3. Find the most popular books in the last 12 months
--- Purpose: Identify the most borrowed books in the last year
--- Expected result: Top 10 books with the number of loans
+/* 3. Find the most popular books in the last 12 months 
+   Purpose: Identify top 10 books (with more than 5 loans) based on loan count within the last year.
+   Expected result: Top 10 most borrowed books with loan counts.
+   Note: Loan date is taken as transactions.issuedate.
+*/
 SELECT 
-    b.title AS 'Book',
-    COUNT(l.id) AS 'Number of Loans in Last Year'
+    b.title AS "Book",
+    COUNT(t.id) AS "Number of Loans in Last Year"
 FROM books b
-JOIN loans l ON b.id = l.book_id
-WHERE l.loan_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+JOIN bookcopies bc ON bc.bookid = b.id
+JOIN transactions t ON t.copyid = bc.id
+WHERE t.issuedate >= (CURRENT_DATE - INTERVAL '12 months')
 GROUP BY b.id, b.title
-HAVING COUNT(l.id) > 5
-ORDER BY COUNT(l.id) DESC
+HAVING COUNT(t.id) > 5
+ORDER BY COUNT(t.id) DESC
 LIMIT 10;
 
--- 4. Find active members who have borrowed more than 10 books
--- Purpose: Identify active members who are frequent readers
--- Expected result: List of members with their total and active loans
+/* 4. Find active users who have borrowed more than 5 books 
+   Purpose: Identify frequent borrowers.
+   Expected result: List of users with their total and active loan counts.
+   Note: Total loans and active (status = 'active') loans are computed from transactions.
+*/
 SELECT 
-    m.id AS 'Member ID',
-    m.first_name AS 'First Name',
-    m.last_name AS 'Last Name',
-    COUNT(l.id) AS 'Total Loans',
-    COUNT(CASE WHEN l.status = 'active' THEN 1 END) AS 'Active Loans'
-FROM members m
-JOIN loans l ON m.id = l.member_id
-GROUP BY m.id, m.first_name, m.last_name
-HAVING COUNT(l.id) > 10
-ORDER BY COUNT(l.id) DESC;
+    u.id AS "User ID",
+    u.name AS "Name",
+    COUNT(t.id) AS "Total Loans",
+    COUNT(CASE WHEN t.status = 'active' THEN 1 END) AS "Active Loans"
+FROM users u
+JOIN transactions t ON u.id = t.userid
+GROUP BY u.id, u.name
+HAVING COUNT(t.id) > 5
+ORDER BY COUNT(t.id) DESC;
 
--- 5. Find authors and their books’ categories
--- Purpose: Shows which genres each author writes in
--- Expected result: List of authors with their books and categories
+/* 5. Find authors and the genres of their books 
+   Purpose: List each author with their book titles and corresponding genres.
+   Expected result: Authors listed with their books and genres, sorted by author last name.
+   Note: books.authorid directly connects to authors.id and books.genreid to genres.id.
+*/
 SELECT 
-    a.first_name AS 'Author First Name',
-    a.last_name AS 'Author Last Name',
-    b.title AS 'Book Title',
-    c.name AS 'Category'
+    a.first_name AS "Author First Name",
+    a.last_name AS "Author Last Name",
+    b.title AS "Book Title",
+    g.name AS "Genre"
 FROM authors a
-JOIN book_authors ba ON a.id = ba.author_id
-JOIN books b ON ba.book_id = b.id
-JOIN categories c ON b.category_id = c.id
+JOIN books b ON a.id = b.authorid
+JOIN genres g ON b.genreid = g.id
 ORDER BY a.last_name, b.title;
 
--- 6. Find members with overdue loans
--- Purpose: Identify members who have overdue books
--- Expected result: List of members, overdue books, and number of overdue days
+/* 6. Find users with overdue loans 
+   Purpose: Identify users with loans overdue based on a 30-day loan period.
+   Expected result: Users with overdue books, sorted by number of overdue days (highest first).
+   Note: Due date is assumed as (issuedate + 30 days). A loan is overdue if:
+         - t.returndate IS NULL
+         - (t.issuedate + INTERVAL '30 days') is before CURRENT_DATE.
+         Overdue days is calculated as the difference between CURRENT_DATE and the due date.
+*/
 SELECT 
-    m.first_name AS 'First Name',
-    m.last_name AS 'Last Name',
-    b.title AS 'Book',
-    l.due_date AS 'Due Date',
-    DATEDIFF(CURDATE(), l.due_date) AS 'Overdue Days'
-FROM members m
-JOIN loans l ON m.id = l.member_id
-JOIN books b ON l.book_id = b.id
-WHERE l.return_date IS NULL 
-  AND l.due_date < CURDATE()
-ORDER BY DATEDIFF(CURDATE(), l.due_date) DESC;
+    u.name AS "Name",
+    b.title AS "Book",
+    (CURRENT_DATE - (t.issuedate + INTERVAL '30 days')::date)::INTEGER AS "Overdue Days"
+FROM users u
+JOIN transactions t ON u.id = t.userid
+JOIN bookcopies bc ON t.copyid = bc.id
+JOIN books b ON bc.bookid = b.id
+WHERE t.returndate IS NULL
+  AND (t.issuedate + INTERVAL '30 days')::date < CURRENT_DATE
+ORDER BY (CURRENT_DATE - (t.issuedate + INTERVAL '30 days')::date)::INTEGER DESC;
