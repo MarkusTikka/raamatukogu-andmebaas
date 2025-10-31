@@ -1,5 +1,5 @@
 -- ============================================
--- Library Database Schema
+-- Library Database Schema for PostgreSQL
 -- ============================================
 
 DROP TABLE IF EXISTS transactions;
